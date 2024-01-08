@@ -1,63 +1,61 @@
 #include <iostream>
-#include <stdio.h>
-#include <netinet/in.h> // for sockaddr_in and inet_ntoa()
-#include <sys/socket.h> //for socket(), connect(), send(), recv() functions
-#include <arpa/inet.h> // different address structures are declared here
-#include <stdlib.h> // atoi() which convert string to integer
-#include <string.h> // memset() which fills the structure with a constant byte
-#include <unistd.h> // close() function
+#include <boost/asio.hpp>
+
 #define PORT 8080
+
+using boost::asio::ip::tcp;
 
 class Client {
 private:
-    int status, valread, client_fd;
-    struct sockaddr_in serv_addr;
-    char* hello = "Hello from client";
-    char buffer[1024] = { 0 };
+    boost::asio::io_context io_context;
+    tcp::socket socket;
+
 public:
-    Client() {
-        std::cout << "Client created" << std::endl;
+    Client(const std::string& server_address, unsigned short port)
+        : socket(io_context) {
+        // Resolve the server address and port
+        tcp::resolver resolver(io_context);
+        auto endpoints = resolver.resolve(server_address, std::to_string(port));
+
+        // Connect to the server
+        boost::asio::connect(socket, endpoints);
     }
-    ~Client() {
-        std::cout << "Client destroyed" << std::endl;
+
+    void sendMessage(const std::string& message) {
+        boost::asio::write(socket, boost::asio::buffer(message + "\n"));
     }
-    int start() {
-        if ((client_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            printf("\n Socket creation error \n");
-            return -1;
-        }
- 
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(PORT);
- 
-        // Convert IPv4 and IPv6 addresses from text to binary
-        // form
-        if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)
-            <= 0) {
-            printf(
-                "\nInvalid address/ Address not supported \n");
-            return -1;
-        }
- 
-        if ((status
-            = connect(client_fd, (struct sockaddr*)&serv_addr,
-                    sizeof(serv_addr)))
-            < 0) {
-            printf("\nConnection Failed \n");
-            return -1;
-        }
-        send(client_fd, hello, strlen(hello), 0);
-        printf("Hello message sent\n");
-        valread = read(client_fd, buffer, 1024 - 1); // subtract 1 for the null terminator at the end
-        printf("%s\n", buffer);
-    
-        // closing the connected socket
-        close(client_fd);
-        return 0;
+
+    std::string receiveMessage() {
+        char response[1024];
+        size_t len = socket.read_some(boost::asio::buffer(response, sizeof(response)));
+        return std::string(response, len);
+    }
+
+    void closeConnection() {
+        socket.close();
     }
 };
 
 int main() {
-    Client client;
-    return client.start();
+    try {
+        std::string server_address = "127.0.0.1";  // Loopback address for local testing
+        unsigned short port = PORT;
+
+        Client client(server_address, port);
+
+        // Send a predefined message "Hello from client"
+        std::string message = "Hello from client";
+        client.sendMessage(message);
+
+        // Wait for and print any response from the server
+        std::string receivedMessage = client.receiveMessage();
+        std::cout << "Response from server: " << receivedMessage << std::endl;
+
+        client.closeConnection();
+
+    } catch (std::exception& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
+
+    return 0;
 }
