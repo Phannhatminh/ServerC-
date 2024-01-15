@@ -5,14 +5,17 @@
 #include <boost/asio.hpp>
 
 using namespace boost::asio;
-using CallbackLoginFunction = int (*)();
+using CallbackLoginFunction = int (*)(std::string, std::string, int);
 using CallbackMessageFunction = int (*)(std::string, boost::asio::ip::tcp::socket&);
+using CallbackLogoutFunction = int (*)(int);
+using CallbackSignupFunction = int (*)(std::string, std::string);
 
 class SessionManager {
 private:
     std::map<int, int> sessionIDToSocketIndex;
     CallbackMessageFunction message_callback;
     CallbackLoginFunction login_callback;
+    CallbackSignupFunction signup_callback;
     SessionManager() {
         std::cout << "SessionManager created\n";
     }
@@ -33,8 +36,14 @@ public:
     void setLoginCallback(CallbackLoginFunction cb) {
         login_callback = cb;
     }
-    bool checkSessionID() { //method for checking if sessionID exists in the map
+    void setSignupCallback(CallbackSignupFunction cb) {
+        signup_callback = cb;
+    }
+    bool checkSignUpRequest() { //method for checking if the message is a signup request
         return true;
+    }
+    bool checkSessionID() { //method for checking if sessionID exists in the map
+        return false;
     }
     bool checkLoginRequest() { //method for checking if the message is a login request
         return true;
@@ -82,15 +91,18 @@ public:
             // Create a socket and accept a new connection
             ip::tcp::socket socket(io_context);
             acceptor.accept(socket);
-            if (checkSessionID()) {
-                char sharedBuffer[1024];
-                size_t len = socket.read_some(boost::asio::buffer(sharedBuffer, sizeof(sharedBuffer)));
-                std::string message(sharedBuffer, len);
-                return message_callback(message, socket);
+            if (checkSessionID() /*Checking if there is such a session in the map*/) { //handle normal message, return 0
+                char sharedBuffer[1024]; //buffer for storing the message
+                size_t len = socket.read_some(boost::asio::buffer(sharedBuffer, sizeof(sharedBuffer))); //read the message from the socket
+                std::string message(sharedBuffer, len); //convert the message to a string
+                message_callback(message, socket); //call the callback function that handles the message
+            }
+            else if (checkSignUpRequest()) { //handle signup request, return 0
+                signup_callback("Phan Nhat Minh", "mudop@282906");
             }
             else if (checkLoginRequest()) { //handle login request, add a sessionID and socket and return sessionID
                 addSession(sessionIDToSocketIndex.size(), socket.native_handle());
-                return login_callback();
+                login_callback("Phan Nhat Minh", "mudop@282906", sessionIDToSocketIndex.size());
             }
             else { 
                 return -1;
