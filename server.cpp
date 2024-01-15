@@ -102,6 +102,7 @@ int main() {
 //Tested, works
 //Done! 13 January 2024, 3:46 AM.
 //Then write the code for login request and session checking
+//Exception: read_some: Connection reset by peer [system:54]
 //Test
 //Then write the code for logout request
 //Test
