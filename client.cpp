@@ -47,10 +47,6 @@ int main() {
         std::string message = "Hello from client";
         client.sendMessage(message);
 
-        // Wait for and print any response from the server
-        std::string receivedMessage = client.receiveMessage();
-        std::cout << "Response from server: " << receivedMessage << std::endl;
-
         client.closeConnection();
 
     } catch (std::exception& e) {

@@ -9,6 +9,7 @@ using CallbackLoginFunction = int (*)(std::string, std::string, int);
 using CallbackMessageFunction = int (*)(std::string, boost::asio::ip::tcp::socket&);
 using CallbackLogoutFunction = int (*)(int);
 using CallbackSignupFunction = int (*)(std::string, std::string);
+using CallbackCheckSignupFunction = bool (*)(std::string, std::string);
 
 class SessionManager {
 private:
@@ -40,10 +41,10 @@ public:
         signup_callback = cb;
     }
     bool checkSignUpRequest() { //method for checking if the message is a signup request
-        return true;
+        return false;
     }
     bool checkSessionID() { //method for checking if sessionID exists in the map
-        return false;
+        return true;
     }
     bool checkLoginRequest() { //method for checking if the message is a login request
         return true;

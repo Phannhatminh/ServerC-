@@ -31,6 +31,7 @@ private:
             user.password = password;
             user.sessionID = -1;
             users[username] = user;
+            std::cout << "User " << username << " signed up\n";
             return 0;
         }
     }
@@ -51,14 +52,17 @@ private:
                     return 0;
                 } else {
                     //User is already logged in
+                    std::cout << "User " << username << " is already logged in\n";
                     return -1;
                 }
             } else {
                 //Password is incorrect
+                std::cout << "User " << username << " entered incorrect password\n";
                 return -2;
             }
         } else {
             //User does not exist
+            std::cout << "User " << username << " does not exist\n";
             return -3;
         }
         return 0;
@@ -103,6 +107,7 @@ int main() {
 //Done! 13 January 2024, 3:46 AM.
 //Then write the code for login request and session checking
 //Exception: read_some: Connection reset by peer [system:54]
+//Done handling the exception
 //Test
 //Then write the code for logout request
 //Test
