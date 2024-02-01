@@ -100,34 +100,10 @@ int main() {
     return 0;
 }
 
-//Write the code for mapping sessionID to socket index
-//Done! 13 January 2024, 3:46 AM.
-//Write the code for echoing the message back to the client
-//Tested, works
-//Done! 13 January 2024, 3:46 AM.
-
-
-//Jan 23, plan: 4.:
-//Understand boost::asio socket and then use it to write class Session
-//Write the code for the asynchronous server by boost and test if it can run (for boost socket to work in a class) 
-//(copy from the guideline)
-//If success, try to implement the way to write the class Session
-//SessionManager is able to create and manage sessions
-//SessionManager is able to send messages to clients
-
-//Define the message structure
-//Study asn1
-//Write the code for decoding and encoding messages
-
-
-//change the parameter in the MessageCallbackFunction (SessionManager.cpp): boost::asio::ip::tcp::socket& to int
-//change the parameter of the onMessage function (Server.cpp)
-//change the parameter of the handleMessgae() function (Server.cpp)
-//change the parameter of the sendTo() function (SessionManager.cpp)
-//std::map<int, int> sessionIDToSocketIndex; (SessionManager.cpp)
-
-
-//Write the class Session that can manager an active socket
-//when a client log in to the system, a session is created for that client
-//Message sending to any client is done through the session
-//the session manager is responsible for creating and managing sessions
+//add message structure for the server:
+//including the message type, the message content, and the sender's sessionID
+//struct Message {
+//    int messageType;
+//    std::string messageContent;
+//    int senderSessionID;
+//};
