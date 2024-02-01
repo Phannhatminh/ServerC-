@@ -14,6 +14,7 @@ struct User {
 class Server {
 private:
     SessionManager* session_manager = &SessionManager::getInstance();
+    std::map<int, std::string> sessionIDToUsername;
     std::map<std::string, User> users;
     Server() {
         std::cout << "Server created\n";
@@ -35,8 +36,8 @@ private:
             return 0;
         }
     }
-    int handleMessage(std::string message, boost::asio::ip::tcp::socket& socket) {
-        return session_manager->sendTo(message, socket);
+    int handleMessage(std::string message, std::string username) {
+        return session_manager->sendTo(message, users[username].sessionID);
     }
     int handleLoginRequest(std::string username, std::string password, int sessionID) {
         //Login the user...
@@ -67,6 +68,14 @@ private:
         }
         return 0;
     }
+    std::string getUsernameBySessionID(int sessionID) {
+        for(auto& user : users) {
+            if(user.second.sessionID == sessionID) {
+                return user.first;
+            }
+        }
+        return "";
+    }
     // Make sure that there is at most one instance of Server
     Server(const Server&) = delete; // delete copy constructor
     Server& operator=(const Server&) = delete;
@@ -78,9 +87,9 @@ public:
     static int onLoginRequest(std::string username, std::string password, int sessionID) {
         return Server::getInstance().handleLoginRequest(username, password, sessionID);
     }
-    static int onChatMessage(std::string message, boost::asio::ip::tcp::socket& socket) {
-        return Server::getInstance().handleMessage(message, socket);
-    } //change the parameter to user. 
+    static int onChatMessage(std::string message, int sessionID) {
+        return Server::getInstance().handleMessage(message, Server::getInstance().getUsernameBySessionID(sessionID)); //Invalid using sessionID in a static member function
+    }  
     static int onSignupRequest(std::string username, std::string password) {
         return Server::getInstance().handleSignupRequest(username, password);
     }
@@ -107,7 +116,7 @@ int main() {
 //Done! 13 January 2024, 3:46 AM.
 
 
-//Jan 23, plan: 4.:
+//Jan 23, plan: 4 p.m. - 7 p.m.:
 //Understand boost::asio socket and then use it to write class Session
 //Write the code for the asynchronous server by boost and test if it can run (for boost socket to work in a class) 
 //(copy from the guideline)
