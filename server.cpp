@@ -8,88 +8,66 @@ using namespace boost::asio;
 struct User {
     std::string username;
     std::string password;
-    int sessionID;
+    int sessionID = -1;
 };
 
 class Server {
 private:
     SessionManager* session_manager = &SessionManager::getInstance();
+    //This map handles users name
     std::map<std::string, User> users;
+    //This map handles the sessionID of the user
+    std::map<int, User> sessionIDToUser;
+    
     Server() {
         std::cout << "Server created\n";
     }
-    int handleSignupRequest(std::string username, std::string password) {
-        //Check if the user exists
-        if(users.find(username) != users.end()) {
-            //User already exists
-            return -1;
-        } else {
-            //User does not exist
-            //Create the user
-            User user;
-            user.username = username;
-            user.password = password;
-            user.sessionID = -1;
-            users[username] = user;
-            std::cout << "User " << username << " signed up\n";
-            return 0;
-        }
-    }
-    int handleMessage(std::string message, boost::asio::ip::tcp::socket& socket) {
-        return session_manager->sendTo(message, socket);
-    }
-    int handleLoginRequest(std::string username, std::string password, int sessionID) {
-        //Login the user...
-        //Check if the user exists
-        if(users.find(username) != users.end()) {
-            //Check if the password is correct
-            if(users[username].password == password) {
-                //Check if the user is already logged in
-                if(users[username].sessionID == -1) {
-                    //Login the user
-                    users[username].sessionID = sessionID;
-                    std::cout << "User " << username << " logged in\n";
-                    return 0;
-                } else {
-                    //User is already logged in
-                    std::cout << "User " << username << " is already logged in\n";
-                    return -1;
-                }
-            } else {
-                //Password is incorrect
-                std::cout << "User " << username << " entered incorrect password\n";
-                return -2;
-            }
-        } else {
-            //User does not exist
-            std::cout << "User " << username << " does not exist\n";
-            return -3;
-        }
-        return 0;
+    ~Server() {
+        std::cout << "Server destroyed\n";
     }
     // Make sure that there is at most one instance of Server
     Server(const Server&) = delete; // delete copy constructor
     Server& operator=(const Server&) = delete;
+
+    void sendTo(int sessionID, std::string message) {
+        session_manager->sendTo(sessionID, message);
+    }
 public:
     static Server& getInstance() {
         static Server instance;
         return instance;
     }
+    //Callbacks
+    //function to handle login request
     static int onLoginRequest(std::string username, std::string password, int sessionID) {
-        return Server::getInstance().handleLoginRequest(username, password, sessionID);
+        //check if the username and password are correct
+        if (Server::getInstance().users.find(username) != Server::getInstance().users.end()) {
+            if (Server::getInstance().users[username].password == password) {
+                //setting up the sessionID for the user
+                Server::getInstance().users[username].sessionID = sessionID;
+                Server::getInstance().sessionIDToUser[sessionID] = Server::getInstance().users[username];
+                //send the sessionID to the user
+                Server::getInstance().sendTo(sessionID, "Login successful. Your sessionID is " + std::to_string(sessionID));
+                return 0;
+            }
+            return -1;
+        } 
     }
-    static int onChatMessage(std::string message, boost::asio::ip::tcp::socket& socket) {
-        return Server::getInstance().handleMessage(message, socket);
-    } //change the parameter to user. 
+    static int onChatMessage(std::string message, int sessionID) {
+        for (auto& user : Server::getInstance().users) {
+            if (user.second.sessionID != sessionID) {
+                Server::getInstance().sendTo(user.second.sessionID, message);
+            }
+        }
+    }  
     static int onSignupRequest(std::string username, std::string password) {
-        return Server::getInstance().handleSignupRequest(username, password);
+        return 0;
     }
     void start() {
-        std::cout << "Server started, listening on port 8080\n";
-        session_manager->setLoginCallback(Server::onLoginRequest);
-        session_manager->setMessageCallback(Server::onChatMessage);
-        session_manager->setSignupCallback(Server::onSignupRequest);
-        session_manager->listenForConnection();
+        session_manager->setMessageCallback(onChatMessage);
+        session_manager->setLoginCallback(onLoginRequest);
+        session_manager->setSignupCallback(onSignupRequest);
+        session_manager->start();
     }
 };
 
@@ -100,10 +78,34 @@ int main() {
     return 0;
 }
 
-//add message structure for the server:
-//including the message type, the message content, and the sender's sessionID
-//struct Message {
-//    int messageType;
-//    std::string messageContent;
-//    int senderSessionID;
-//};
+//Write the code for mapping sessionID to socket index
+//Done! 13 January 2024, 3:46 AM.
+//Write the code for echoing the message back to the client
+//Tested, works
+//Done! 13 January 2024, 3:46 AM.
+
+
+//Jan 23, plan: 4 p.m. - 7 p.m.:
+//Understand boost::asio socket and then use it to write class Session
+//Write the code for the asynchronous server by boost and test if it can run (for boost socket to work in a class) 
+//(copy from the guideline)
+//If success, try to implement the way to write the class Session
+//SessionManager is able to create and manage sessions
+//SessionManager is able to send messages to clients
+
+//Define the message structure
+//Study asn1
+//Write the code for decoding and encoding messages
+
+
+//change the parameter in the MessageCallbackFunction (SessionManager.cpp): boost::asio::ip::tcp::socket& to int
+//change the parameter of the onMessage function (Server.cpp)
+//change the parameter of the handleMessgae() function (Server.cpp)
+//change the parameter of the sendTo() function (SessionManager.cpp)
+//std::map<int, int> sessionIDToSocketIndex; (SessionManager.cpp)
+
+
+//Write the class Session that can manager an active socket
+//when a client log in to the system, a session is created for that client
+//Message sending to any client is done through the session
+//the session manager is responsible for creating and managing sessions
