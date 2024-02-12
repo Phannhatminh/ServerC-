@@ -61,6 +61,15 @@ public:
         }
     }  
     static int onSignupRequest(std::string username, std::string password) {
+        //check if the username is already taken
+        if (Server::getInstance().users.find(username) != Server::getInstance().users.end()) {
+            return -1;
+        }
+        //create a new user
+        User user;
+        user.username = username;
+        user.password = password;
+        Server::getInstance().users[username] = user;
         return 0;
     }
     void start() {

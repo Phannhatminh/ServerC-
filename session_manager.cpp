@@ -56,6 +56,7 @@ public:
         ip::tcp::endpoint ep(ip::tcp::v4(), 8080);
         ip::tcp::acceptor acc(service, ep);
         while(true) {
+            //create a new socket for client communication
             ip::tcp::socket sock(service);
             acc.accept(sock);
             if (checkSignUpRequest()) {
