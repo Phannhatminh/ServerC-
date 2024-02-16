@@ -1,65 +1,87 @@
 #include <iostream>
 #include <boost/asio.hpp>
-#include "session_manager.cpp"
-
+#include "server_session_manager.cpp"
+#include "user.cpp"
 
 using namespace boost::asio;
 
-struct User {
-    std::string username;
-    std::string password;
-    int sessionID = -1;
-};
-
 class Server {
 private:
-    SessionManager* session_manager = &SessionManager::getInstance();
+    //SessionManager to handle the session
+    ServerSessionManager* session_manager = &ServerSessionManager::getInstance(IPVersion::IPv4, 8080);
+
     //This map handles users name
     std::map<std::string, User> users;
+
     //This map handles the sessionID of the user
     std::map<int, User> sessionIDToUser;
     
+    //private constructor
     Server() {
         std::cout << "Server created\n";
     }
+    
+    //private destructor
     ~Server() {
         std::cout << "Server destroyed\n";
     }
+
     // Make sure that there is at most one instance of Server
     Server(const Server&) = delete; // delete copy constructor
     Server& operator=(const Server&) = delete;
 
+    //function to send message to a specific user
     void sendTo(int sessionID, std::string message) {
         session_manager->sendTo(sessionID, message);
     }
+
+    //function to broadcast message to all users
+    void broadcast(std::string message, int sessionID) {
+        for (auto& user : Server::getInstance().users) {
+            //check if the user is not the sender
+            if (user.second.sessionID != sessionID) {
+                //send the message to the user
+                Server::getInstance().sendTo(user.second.sessionID, sessionIDToUser[sessionID].username + " has sent: " + message);
+            }
+        }
+        Server::getInstance().sendTo(sessionID, "You have sent: " + message);
+    }
 public:
+    //function to get the instance of the server
     static Server& getInstance() {
         static Server instance;
         return instance;
     }
+
     //Callbacks
     //function to handle login request
     static int onLoginRequest(std::string username, std::string password, int sessionID) {
         //check if the username and password are correct
         if (Server::getInstance().users.find(username) != Server::getInstance().users.end()) {
+            //check if the password is correct
             if (Server::getInstance().users[username].password == password) {
                 //setting up the sessionID for the user
                 Server::getInstance().users[username].sessionID = sessionID;
+
+                //add the sessionID to the sessionIDToUser map
                 Server::getInstance().sessionIDToUser[sessionID] = Server::getInstance().users[username];
+
                 //send the sessionID to the user
                 Server::getInstance().sendTo(sessionID, "Login successful. Your sessionID is " + std::to_string(sessionID));
+
                 return 0;
             }
             return -1;
         } 
     }
+
+    //function to handle chat message
     static int onChatMessage(std::string message, int sessionID) {
-        for (auto& user : Server::getInstance().users) {
-            if (user.second.sessionID != sessionID) {
-                Server::getInstance().sendTo(user.second.sessionID, message);
-            }
-        }
-    }  
+        //send the message to all users except the sender
+        Server::getInstance().broadcast(message, sessionID);
+    } 
+
+    //function to handle signup request
     static int onSignupRequest(std::string username, std::string password) {
         //check if the username is already taken
         if (Server::getInstance().users.find(username) != Server::getInstance().users.end()) {
@@ -72,6 +94,8 @@ public:
         Server::getInstance().users[username] = user;
         return 0;
     }
+
+    //function to start the server
     void start() {
         session_manager->setMessageCallback(onChatMessage);
         session_manager->setLoginCallback(onLoginRequest);
@@ -80,41 +104,3 @@ public:
     }
 };
 
-int main() {
-    Server& server = Server::getInstance();
-    server.start();
-    std::cout << "Server is interupted\n";
-    return 0;
-}
-
-//Write the code for mapping sessionID to socket index
-//Done! 13 January 2024, 3:46 AM.
-//Write the code for echoing the message back to the client
-//Tested, works
-//Done! 13 January 2024, 3:46 AM.
-
-
-//Jan 23, plan: 4 p.m. - 7 p.m.:
-//Understand boost::asio socket and then use it to write class Session
-//Write the code for the asynchronous server by boost and test if it can run (for boost socket to work in a class) 
-//(copy from the guideline)
-//If success, try to implement the way to write the class Session
-//SessionManager is able to create and manage sessions
-//SessionManager is able to send messages to clients
-
-//Define the message structure
-//Study asn1
-//Write the code for decoding and encoding messages
-
-
-//change the parameter in the MessageCallbackFunction (SessionManager.cpp): boost::asio::ip::tcp::socket& to int
-//change the parameter of the onMessage function (Server.cpp)
-//change the parameter of the handleMessgae() function (Server.cpp)
-//change the parameter of the sendTo() function (SessionManager.cpp)
-//std::map<int, int> sessionIDToSocketIndex; (SessionManager.cpp)
-
-
-//Write the class Session that can manager an active socket
-//when a client log in to the system, a session is created for that client
-//Message sending to any client is done through the session
-//the session manager is responsible for creating and managing sessions
